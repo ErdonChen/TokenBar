@@ -15,8 +15,47 @@ public class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var oauthAuthenticator: ClaudeOAuthAuthenticator?
     private let confettiController = ConfettiWindowController()
 
+    public func applicationWillFinishLaunching(_ notification: Notification) {
+        closePlaceholderSettingsWindows()
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didChangeOcclusionStateNotification] {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handleWindowLifecycle(_:)),
+                name: name,
+                object: nil
+            )
+        }
+        for delay in [0.15, 0.5, 1.2] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.closePlaceholderSettingsWindows()
+            }
+        }
+    }
+
+    /// Menu bar app: do not synthesize a document window at launch. With only
+    /// `Settings { EmptyView() }` declared, macOS otherwise presents that empty
+    /// scene as a blank "TokenBar Settings" window (default 900×450).
+    public func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    public func applicationOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    public func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showSettings()
+        return false
+    }
+
+    /// Closing the unused SwiftUI settings scene must not quit this menu bar app.
+    public func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
     public func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        closePlaceholderSettingsWindows()
         TBLog.log("App launched. Log file: \(TBLog.logPath)", category: "app")
 
         NotificationCenter.default.addObserver(
@@ -59,6 +98,12 @@ public class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Runs in background; refreshes menu bar when new icons arrive.
         ProviderCatalog.downloadMissingIcons { [weak self] in
             self?.updateMenuBarIcon()
+        }
+
+        // Opening the app must provide an accessible entry point even when
+        // the combined status item does not fit in the menu bar.
+        DispatchQueue.main.async { [weak self] in
+            self?.showSettings()
         }
     }
 
@@ -254,24 +299,74 @@ public class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         showSettings()
     }
 
+    /// Called from the SwiftUI Settings menu command in the app target.
+    public func openSettingsWindow() {
+        showSettings()
+    }
+
     func showSettings() {
         if settingsWindow == nil {
             let view = SettingsView().environmentObject(providerManager)
+            let hosting = NSHostingController(rootView: view)
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 580, height: 480),
-                styleMask: [.titled, .closable],
+                contentRect: NSRect(x: 0, y: 0, width: 660, height: 480),
+                styleMask: [.titled, .closable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )
-            window.contentView = NSHostingView(rootView: view)
+            window.contentViewController = hosting
             window.title = "TokenBar Settings"
-            window.center()
+            window.identifier = NSUserInterfaceItemIdentifier(Self.realSettingsWindowID)
+            window.isRestorable = false
             window.isReleasedWhenClosed = false
+            window.center()
             settingsWindow = window
         }
         settingsWindow?.appearance = providerManager.appearanceMode.nsAppearance
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private static let realSettingsWindowID = "com.saphid.tokenbar.settings"
+
+    @objc private func handleWindowLifecycle(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let window else { return }
+            self?.closeIfPlaceholder(window)
+        }
+    }
+
+    /// Dismisses the empty SwiftUI Settings scene. Never touches the AppKit
+    /// settings window, which has a stable identifier.
+    private func closePlaceholderSettingsWindows() {
+        for window in NSApp.windows {
+            closeIfPlaceholder(window)
+        }
+    }
+
+    private func closeIfPlaceholder(_ window: NSWindow) {
+        guard isPlaceholderSettingsWindow(window) else { return }
+        guard window.isVisible else { return }
+        TBLog.log(
+            "Hiding placeholder settings window id=\(window.identifier?.rawValue ?? "-") frame=\(NSStringFromRect(window.frame))",
+            category: "windows"
+        )
+        // Hide only. Closing this window ends the app's only SwiftUI scene and
+        // can terminate the process.
+        window.orderOut(nil)
+    }
+
+    private func isPlaceholderSettingsWindow(_ window: NSWindow) -> Bool {
+        if window === settingsWindow { return false }
+        let identifier = window.identifier?.rawValue ?? ""
+        if identifier == Self.realSettingsWindowID { return false }
+        if identifier.hasPrefix("com_apple_SwiftUI_Settings") { return true }
+        if window.frameAutosaveName.hasPrefix("com_apple_SwiftUI_Settings") { return true }
+        // SwiftUI's empty Settings scene uses this title and the 900×450 default.
+        let frame = window.frame
+        let isDefaultSwiftUISettingsSize = abs(frame.width - 900) < 2 && abs(frame.height - 450) < 2
+        return window.title == "TokenBar Settings" && isDefaultSwiftUISettingsSize
     }
 
     @objc private func handleAppearanceChanged() {
