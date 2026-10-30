@@ -22,6 +22,10 @@
 
 TokenBar is a lightweight macOS menu bar app that tracks token usage and spending across your AI coding tools. It auto-detects installed providers and shows real-time usage stats at a glance.
 
+This fork fixes opening and reopening the settings window on macOS and adds
+Grok Bot and Antigravity as separate, installation-detection-only providers.
+These two entries do not report token usage or remaining quota.
+
 <p align="center">
   <img src="docs/assets/screenshot.png" alt="TokenBar screenshot" width="500">
 </p>
@@ -51,7 +55,7 @@ TokenBar is a lightweight macOS menu bar app that tracks token usage and spendin
 
 ### Auto-Detection (presence monitoring)
 
-Aider, Amazon Q, Cline, Cody, Continue, Gemini, Minimax, Ollama, OpenRouter, Tabnine, Windsurf, Zai
+Aider, Amazon Q, Antigravity, Cline, Cody, Continue, Gemini, Grok Bot, Minimax, Ollama, OpenRouter, Tabnine, Windsurf, Zai
 
 TokenBar checks for installed apps, CLI tools, and VS Code/Cursor/Windsurf extensions to detect which providers you have.
 
@@ -60,7 +64,7 @@ TokenBar checks for installed apps, CLI tools, and VS Code/Cursor/Windsurf exten
 ### From source (recommended)
 
 ```bash
-git clone https://github.com/saphid/TokenBar.git
+git clone https://github.com/ErdonChen/TokenBar.git
 cd TokenBar
 make install
 ```
@@ -70,7 +74,7 @@ This builds a release binary, bundles it into `TokenBar.app`, and copies it to `
 ### Development
 
 ```bash
-git clone https://github.com/saphid/TokenBar.git
+git clone https://github.com/ErdonChen/TokenBar.git
 cd TokenBar
 make run
 ```

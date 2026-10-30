@@ -7,11 +7,11 @@ enum GeminiProviderDef: DetectionOnlyProvider {
     static let dashboardURL: URL? = URL(string: "https://aistudio.google.com")
 
     static let detection = DetectionSpec(
-        paths: ["/Applications/Gemini.app", "/Applications/Antigravity.app"],
+        paths: ["/Applications/Gemini.app"],
         commands: ["gemini"]
     )
     static let iconSpec = IconSpec(
-        appBundlePaths: ["/Applications/Gemini.app", "/Applications/Antigravity.app"],
+        appBundlePaths: ["/Applications/Gemini.app"],
         faviconDomain: "gemini.google.com"
     )
 }

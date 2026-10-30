@@ -1,4 +1,5 @@
 .build/
+TokenBar.app/
 .swiftpm/
 *.xcodeproj
 DerivedData/
