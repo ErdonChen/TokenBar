@@ -192,6 +192,10 @@ struct MenuBarDropdownView: View {
     private static let supplementaryLabels: Set<String> = ["Credits", "On-Demand"]
 
     private func tokenStatus(for snapshot: UsageSnapshot) -> TokenStatus {
+        // Show each model pool rather than labelling the entire provider as exhausted.
+        if snapshot.hasIndependentQuotaGroups {
+            return .available(quotas: snapshot.quotas)
+        }
         let trackable = snapshot.quotas.filter { $0.percentUsed >= 0 }
         let infoOnly = snapshot.quotas.filter { $0.percentUsed < 0 }
 
@@ -360,7 +364,7 @@ struct MenuBarDropdownView: View {
                 Spacer()
 
                 if quota.percentUsed >= 0 {
-                    Text(String(format: "%.1f%%", quota.percentUsed))
+                    Text(String(format: "%.1f%% used", quota.percentUsed))
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundStyle(colorForStatus(quota.statusColor))
                 }

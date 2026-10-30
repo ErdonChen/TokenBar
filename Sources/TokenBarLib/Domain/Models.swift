@@ -6,6 +6,22 @@ struct UsageSnapshot: Sendable {
     let quotas: [UsageQuota]
     let capturedAt: Date
     let accountTier: String?
+    /// Some providers have separate model pools; exhausting one does not block the others.
+    let hasIndependentQuotaGroups: Bool
+
+    init(
+        providerId: String,
+        quotas: [UsageQuota],
+        capturedAt: Date,
+        accountTier: String?,
+        hasIndependentQuotaGroups: Bool = false
+    ) {
+        self.providerId = providerId
+        self.quotas = quotas
+        self.capturedAt = capturedAt
+        self.accountTier = accountTier
+        self.hasIndependentQuotaGroups = hasIndependentQuotaGroups
+    }
 }
 
 struct UsageQuota: Sendable {

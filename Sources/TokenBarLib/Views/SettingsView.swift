@@ -632,12 +632,12 @@ struct ProviderDetailPanel: View {
             if let snapshot = providerManager.snapshots[config.id] {
                 let quotaLabels = snapshot.quotas.map { q in
                     if q.percentUsed >= 0 {
-                        return "\(q.label): \(String(format: "%.1f%%", q.percentUsed))"
+                        return "\(q.label): \(String(format: "%.1f%%", q.percentUsed)) used"
                             + (q.detailText.map { " · \($0)" } ?? "")
                     } else if let override = q.menuBarOverride {
                         return "\(q.label): \(override)"
                     } else {
-                        return q.label
+                        return q.label + (q.detailText.map { " · \($0)" } ?? "")
                     }
                 }
                 if !quotaLabels.isEmpty {
@@ -645,6 +645,18 @@ struct ProviderDetailPanel: View {
                         detailRow(icon: "chart.bar.fill", text: text)
                     }
                 }
+                ForEach(Array(snapshot.quotas.enumerated()), id: \.offset) { _, quota in
+                    if let reset = quota.resetsAt {
+                        detailRow(
+                            icon: "arrow.counterclockwise",
+                            text: "\(quota.label) resets \(reset.formatted(date: .abbreviated, time: .shortened))"
+                        )
+                    }
+                }
+                detailRow(
+                    icon: "clock",
+                    text: "Updated \(snapshot.capturedAt.formatted(date: .abbreviated, time: .shortened))"
+                )
             }
 
             if let source = dataSourceDescription {

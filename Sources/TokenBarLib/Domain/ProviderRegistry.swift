@@ -71,11 +71,11 @@ enum ProviderRegistry {
         CodexProviderDef.self,
         KiloCodeProviderDef.self,
         OpenCodeProviderDef.self,
+        GrokBotProviderDef.self,
+        AntigravityProviderDef.self,
 
         // Detection-only (presence check)
         ChatGPTProviderDef.self,
-        GrokBotProviderDef.self,
-        AntigravityProviderDef.self,
         WindsurfProviderDef.self,
         GeminiProviderDef.self,
         AiderProviderDef.self,

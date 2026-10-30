@@ -8,9 +8,26 @@ public extension Notification.Name {
     static let testConfettiAllBubbles = Notification.Name("com.tokenbar.testConfettiAllBubbles")
 }
 
+/// Reserve most of the menu bar for system controls and other apps. If the
+/// provider strip exceeds this budget, keep a small, clickable entry point.
+enum MenuBarLayoutPolicy {
+    static func shouldUseCompactIcon(
+        contentWidth: CGFloat,
+        screenWidth: CGFloat,
+        unobscuredRightWidth: CGFloat
+    ) -> Bool {
+        let rightSideWidth = unobscuredRightWidth > 0
+            ? unobscuredRightWidth
+            : screenWidth / 2
+        let expandedBudget = max(24, min(240, rightSideWidth * 0.4))
+        return contentWidth > expandedBudget
+    }
+}
+
 public class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let providerManager = ProviderManager()
     private var statusItem: NSStatusItem?
+    private var isCompactStatusItem = false
     private var settingsWindow: NSWindow?
     private var oauthAuthenticator: ClaudeOAuthAuthenticator?
     private let confettiController = ConfettiWindowController()
@@ -74,6 +91,10 @@ public class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self, selector: #selector(handleTestConfetti),
             name: .testConfettiAllBubbles, object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleMenuBarLayoutChanged),
+            name: NSApplication.didChangeScreenParametersNotification, object: nil
+        )
 
         providerManager.onStatusChange = { [weak self] in
             self?.updateMenuBarIcon()
@@ -119,7 +140,8 @@ public class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 textColor: .secondaryLabelColor,
                 isDark: button.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             )
-            button.toolTip = "TokenBar"
+            button.toolTip = "TokenBar — Click to view usage"
+            button.setAccessibilityLabel("TokenBar — Click to view usage")
         }
 
         let menu = NSMenu()
@@ -173,12 +195,31 @@ public class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             )
         }
 
-        button.image = image
+        let screen = button.window?.screen ?? NSScreen.main ?? NSScreen.screens.first
+        isCompactStatusItem = MenuBarLayoutPolicy.shouldUseCompactIcon(
+            contentWidth: image.size.width + 4,
+            screenWidth: screen?.frame.width ?? 1280,
+            unobscuredRightWidth: screen?.auxiliaryTopRightArea?.width ?? 0
+        )
+        if isCompactStatusItem {
+            let compactImage = NSImage(
+                systemSymbolName: "gauge.with.dots.needle.bottom.50percent",
+                accessibilityDescription: "TokenBar"
+            )
+            compactImage?.isTemplate = true
+            button.image = compactImage
+        } else {
+            button.image = image
+        }
         // Explicitly set the status item width to match the rendered image.
         // variableLength (-1) doesn't reliably resize when the image changes dynamically.
-        let targetWidth = image.size.width + 4
+        let targetWidth = isCompactStatusItem ? NSStatusBar.system.thickness : image.size.width + 4
         statusItem?.length = targetWidth
-        TBLog.log("updateMenuBarIcon: \(items.count) items, image=\(Int(image.size.width))pt, statusItem.length=\(Int(targetWidth))", category: "render")
+        TBLog.log("updateMenuBarIcon: \(items.count) items, image=\(Int(image.size.width))pt, statusItem.length=\(Int(targetWidth)), compact=\(isCompactStatusItem)", category: "render")
+    }
+
+    @objc private func handleMenuBarLayoutChanged() {
+        updateMenuBarIcon()
     }
 
     /// Labels for supplementary quotas that don't block primary access.
@@ -188,6 +229,11 @@ public class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// If blocked: shows "↻2h" countdown to reset.
     /// If available: shows the most constraining primary quota percentage.
     private func menuBarText(for snapshot: UsageSnapshot) -> (text: String, color: NSColor, useTimerIcon: Bool) {
+        // Independent model groups do not share one exhaustion threshold.
+        // Show their individual percentages in the dropdown instead.
+        if snapshot.hasIndependentQuotaGroups {
+            return ("Usage", .secondaryLabelColor, false)
+        }
         let trackable = snapshot.quotas.filter { $0.percentUsed >= 0 }
         let primary = trackable.filter { !Self.supplementaryLabels.contains($0.label) }
         let exhaustedPrimary = primary.filter { $0.percentUsed >= 100 }
@@ -437,6 +483,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Computes the screen center of a specific provider's pill in the menu bar.
     /// Replicates the layout math from `renderCombinedMenuBarImage`.
     func screenPositionForProvider(_ providerId: String) -> CGPoint? {
+        if isCompactStatusItem { return statusItemScreenCenter }
         guard let button = statusItem?.button, let window = button.window else { return nil }
         let buttonFrame = button.convert(button.bounds, to: nil)
         let screenOrigin = window.convertToScreen(buttonFrame)

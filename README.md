@@ -22,9 +22,9 @@
 
 TokenBar is a lightweight macOS menu bar app that tracks token usage and spending across your AI coding tools. It auto-detects installed providers and shows real-time usage stats at a glance.
 
-This fork fixes opening and reopening the settings window on macOS and adds
-Grok Bot and Antigravity as separate, installation-detection-only providers.
-These two entries do not report token usage or remaining quota.
+This fork fixes opening and reopening the settings window on macOS, adds
+Grok Bot and Antigravity usage providers, and keeps a compact menu bar icon
+when the full provider strip would be too wide.
 
 <p align="center">
   <img src="docs/assets/screenshot.png" alt="TokenBar screenshot" width="500">
@@ -52,10 +52,12 @@ These two entries do not report token usage or remaining quota.
 | **Codex** | Multi-org usage tracking |
 | **Kilo Code** | Token consumption |
 | **OpenCode** | Usage stats |
+| **Grok Bot** | Weekly plan usage and reset time |
+| **Antigravity** | Separate model-group quotas and reset times via the official `agy` CLI |
 
 ### Auto-Detection (presence monitoring)
 
-Aider, Amazon Q, Antigravity, Cline, Cody, Continue, Gemini, Grok Bot, Minimax, Ollama, OpenRouter, Tabnine, Windsurf, Zai
+Aider, Amazon Q, Cline, Cody, Continue, Gemini, Minimax, Ollama, OpenRouter, Tabnine, Windsurf, Zai
 
 TokenBar checks for installed apps, CLI tools, and VS Code/Cursor/Windsurf extensions to detect which providers you have.
 
@@ -130,6 +132,21 @@ On first launch, TokenBar scans your system and enables detected providers autom
 - Reorder providers
 
 The Settings UI uses a sidebar + detail panel layout (macOS System Settings style) -- no nested dialogs.
+
+Grok Bot uses its existing local sign-in to read its own dashboard service.
+macOS may ask you to allow TokenBar to access Grok Bot's Safe Storage keychain
+item. If live access is unavailable, a recent app usage cache is shown with its
+original update time; cached data is explicitly labelled.
+
+Antigravity requires the [official `agy` CLI](https://antigravity.google/docs/cli/headless/)
+and an existing Antigravity sign-in. TokenBar runs the read-only `agy -p /usage`
+command; it does not send a model prompt. Its separate model pools are displayed
+individually, so exhausting one group does not mark every model as unavailable.
+
+Click the TokenBar gauge icon in the macOS menu bar to view usage cards. If many
+providers are enabled, the icon stays compact to avoid disappearing behind the
+display notch or other menu bar items. Reopening TokenBar also opens Settings,
+where selecting a provider shows its current data.
 
 ## Project Structure
 
